@@ -48,22 +48,39 @@ Modern applications process high volumes of unstructured data that risk leaking 
 
 ## 🏗️ Architecture
 
-```mermaid
-flowchart TD
-    Client["React + TypeScript Frontend\n(Vite / Vercel)"] -->|REST & SSE| API["FastAPI Backend Gateway\n(Uvicorn / Render)"]
-    
-    subgraph Pipeline ["Multi-Stage Security Pipeline"]
-        API --> Step1["1. Deterministic Detection\n(22 Regex Patterns)"]
-        Step1 --> Step2["2. Statistical Analysis\n(Shannon Entropy & Z-Score)"]
-        Step2 --> Step3["3. Anomaly Scoring\n(ML Feature Weighting)"]
-        Step3 --> Step4["4. AI Gateway\n(Gemini → Claude → Fallback)"]
-        Step4 --> Step5["5. Risk Engine\n(Weighted CVSS Score 0-15)"]
-        Step5 --> Step6["6. Policy Engine\n(Allowed / Masked / Blocked)"]
-    end
-
-    Step6 --> Response["Masked JSON Response & Findings"]
-    API -.->|SSE Stream| Logs["Live Telemetry Event Buffer"]
+```text
+┌─────────────────────────────────────────────────────────────┐
+│               React 18 + TypeScript Dashboard               │
+│               (Vite / Vercel: port 5173/3000)               │
+└──────────────────────────────┬──────────────────────────────┘
+                               │  REST API & Live SSE Stream
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    FastAPI Backend Gateway                  │
+│                     (Uvicorn: port 8000)                    │
+│  ├─ /analyze  ├─ /health  ├─ /patterns  ├─ /api/logs/*      │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                Multi-Stage Security Pipeline                │
+│                                                             │
+│  [1] Deterministic Detection ──► 22 Regex Pattern Detectors │
+│  [2] Statistical Analysis    ──► Shannon Entropy & Z-Score  │
+│  [3] ML-Style Anomaly Scorer ──► Feature Extraction & Tree  │
+│  [4] AI Contextual Gateway   ──► Gemini ──► Claude ──► Rules│
+│  [5] Risk Calculation Engine ──► Weighted CVSS Score (0-15) │
+│  [6] Policy Decision Engine  ──► ALLOWED | MASKED | BLOCKED │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+               ┌───────────────┴───────────────┐
+               ▼                               ▼
+┌─────────────────────────────┐ ┌─────────────────────────────┐
+│    Masked JSON Response     │ │    Live Telemetry (SSE)     │
+│  (Findings, Action, Scores) │ │  (In-Memory Ring Buffer)    │
+└─────────────────────────────┘ └─────────────────────────────┘
 ```
+
 
 ---
 
