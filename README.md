@@ -1,69 +1,78 @@
-# 🔰 AI Secure Data Intelligence Platform
+# 🛡️ AI Secure Data Intelligence Platform
 
-An intelligent system to detect, analyze, and report sensitive data leaks, secrets, and suspicious behavior across logs, files, SQL queries, text, and chat conversations.
+A full-stack security scanner that detects secrets, PII, and attack patterns in text, files, SQL, chat, and log data using a four-layer detection pipeline (regex, statistics, ML-style anomaly scoring, and AI).
 
----
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white)
 
-## 🌐 Live Deployment Links
+🌐 **[Live Demo](https://sisa-hackathon.vercel.app/)** &nbsp;·&nbsp; 📖 **[API Docs (Swagger)](https://secureai-backend-3yg7.onrender.com/docs)** &nbsp;·&nbsp; ⚡ **[Backend API](https://secureai-backend-3yg7.onrender.com/)** &nbsp;·&nbsp; 💻 **[Source Code](https://github.com/Kondareddy1209/AI_Secure_Data_Intelligence_Platform)**
 
-| Component | URL | Status |
-|-----------|-----|--------|
-| **Backend API** | https://secureai-backend-3yg7.onrender.com | ✅ Live |
-| **Swagger Docs** | https://secureai-backend-3yg7.onrender.com/docs | ✅ Live |
-| **Health Check** | https://secureai-backend-3yg7.onrender.com/health | ✅ Live |
-| **Logs History** | https://secureai-backend-3yg7.onrender.com/api/logs/history | ✅ Live |
-| **Live Logs Stream** | https://secureai-backend-3yg7.onrender.com/api/logs/stream | ✅ Live (SSE) |
+> ⚠️ The backend is hosted on Render's free tier and may take ~30–50s to spin up after a period of inactivity.
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## 🎥 Demo
 
-### Prerequisites
-- Python 3.10+
-- Node.js 18+
-- Docker & Docker Compose (optional)
+> 🎥 Demo video coming soon.
 
-### Setup
+---
 
-1. **Clone & Install**
-```bash
-git clone https://github.com/Kondareddy1209/SISA-Hackathon.git
-cd SISA-Hackathon
-```
+## 🖥️ Screenshots
 
-2. **Backend Setup**
-```bash
-cd backend
-cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
-pip install -r requirements.txt
-python -m uvicorn app.main:app --reload --port 8000
-```
+> The repository does not currently include screenshot assets. Add real screenshots to a `screenshots/` folder and reference them below, for example:
+>
+> `screenshots/dashboard.png` · `screenshots/analysis.png` · `screenshots/logs.png`
 
-Frontend will be available at: **http://localhost:8000**
+---
 
-3. **Frontend Setup**
-```bash
-cd frontend
-npm install
-npm run dev
-```
+## 🎯 Overview
 
-Frontend will be available at: **http://localhost:5173**
+- **What it is** — a FastAPI backend paired with a React/TypeScript dashboard that scans arbitrary content (`text`, `file`, `sql`, `chat`, `log`) for sensitive data exposure and attack indicators, then scores and reports on the risk found.
+- **What it solves** — accidental secret leakage (API keys, passwords, tokens, private keys, connection strings), PII exposure (SSNs, credit cards, emails), and attack traffic hiding in application/system logs (brute force, SQL injection, XSS, path traversal, privilege escalation).
+- **How it detects** — every request runs through up to four independent layers: a 22-pattern regex engine, a statistics engine (Shannon entropy, z-score anomaly windows), a lightweight Isolation-Forest-inspired ML scorer, and an AI reasoning layer (Gemini, with an Anthropic Claude fallback) that produces plain-English remediation insights.
+- **Risk-aware by design** — every finding is weighted and rolled into a single risk score, mapped to a risk level, and paired with a policy decision (`allowed` / `masked` / `blocked`) so the platform can be plugged into a gate, not just a report.
+- **Observable** — every backend request and detection event is logged in-memory and streamed live to the frontend over Server-Sent Events, so you can watch the system reason about traffic in real time.
 
-### With Docker Compose
+---
 
-```bash
-docker-compose up --build
-```
+## ✨ Key Features
 
-- **Backend:** http://localhost:8000
-- **Frontend:** http://localhost:3000
+### 🔍 Input Types
+- Plain **text**, uploaded **files**, raw **SQL** queries, **chat** transcripts, and **log** files — selectable from the dashboard sidebar.
+- Log/SQL file uploads auto-detect their `input_type` from the file extension.
+
+### 🧠 Detection Engines
+- **Regex engine** — 22 named patterns covering credentials, PII, and injection payloads (see [Detection Patterns](#-detection-patterns) below).
+- **Statistical engine** — Shannon-entropy scoring for high-entropy secrets, z-score credential-density outliers, multi-pattern-per-line correlation, and z-score failure-rate spikes.
+- **Log-specific analysis** — brute-force detection (5+ consecutive failed logins), IP classification (loopback / private / reserved / public), and correlation of public IPs with attack or failed-login activity.
+- **ML anomaly layer** — a hand-rolled, Isolation-Forest-inspired scorer built on entropy, keyword density, and character-ratio features; flags credential-density anomalies, injection-pattern anomalies, and multi-finding correlation spikes.
+- **AI insight layer** — Google Gemini is the default provider (`AI_PROVIDER=gemini`), with automatic fallback to Anthropic Claude (`claude-sonnet-4-6`) if Gemini is unavailable, and a final fallback to rule-based, template-driven insights if neither AI service can be reached.
+
+### 🛡️ Security & Policy
+- **Type-aware masking** — emails, passwords, API keys, bearer tokens, and JWTs get pattern-specific redaction; everything else falls back to a generic `[MASKED]` value.
+- **Policy engine** — maps risk level + request options to an `allowed` / `masked` / `blocked` action.
+- **Optional bearer-token auth** — off by default; enabled via `REQUIRE_API_BEARER_TOKEN=true` and validated against `API_BEARER_TOKEN`.
+- **CORS allowlist** — explicit origins plus a regex allowing any `*.vercel.app` preview deployment.
+
+### 📊 Risk Assessment
+- Findings are weighted (`critical=4, high=3, medium=2, low=1`), summed, and capped at **15**.
+- Score → level thresholds: **critical ≥ 11**, **high ≥ 7**, **medium ≥ 4**, **low < 4**.
+- Each response includes a human-readable summary, a detection breakdown by method, and the resulting policy `action`.
+
+### 📡 Real-Time Monitoring
+- Every request is timed, logged, and broadcast through an SSE stream (`/api/logs/stream`) with a live in-memory history of the last **100** events (`/api/logs/history`).
+- The frontend includes a toggleable live-logs viewer that consumes this stream directly.
+
+### 🤖 AI/ML
+- Dual-provider AI gateway (Gemini primary → Claude fallback → rule-based fallback) with structured error handling for timeouts, rate limits, auth failures, and exhausted credits.
+- Lightweight, dependency-free anomaly scoring (no external ML library) driven by entropy and keyword-density features.
 
 ---
 
 ## 🏗️ Architecture
-
 ```
 ┌─────────────────────┐
 │   Browser (React)   │
@@ -89,269 +98,219 @@ docker-compose up --build
 └─────────────────────┘
 ```
 
----
-
-## 📋 Features
-
-### Input Types
-- 📝 **Text** — Plain text analysis
-- 📁 **File** — Document upload (TXT, LOG, SQL)
-- 🗄️ **SQL** — SQL query inspection
-- 📋 **Log** — Log file parsing with anomaly detection
-- 💬 **Chat** — Conversation analysis
-
-### Detection Methods
-- ✅ **Regex Engine** — Pattern-based secret detection
-- ✅ **Statistical Analysis** — Anomaly detection (Z-score)
-- ✅ **ML Detection** — Isolation Forest clustering
-- ✅ **AI Insights** — Claude-powered contextual analysis
-
-### Security Features
-- 🔒 **Data Masking** — Redact sensitive values
-- 📊 **Risk Scoring** — CVSS-style scoring (0-10)
-- 🚫 **Policy Enforcement** — Block/allow based on risk level
-- 📋 **Live Logging** — Real-time system event streaming
-
-### Detections
-- API Keys & Tokens
-- Database Credentials
-- Private Keys & Certificates
-- Credit Card Numbers
-- Social Security Numbers
-- Brute Force Attacks
-- SQL Injection Payloads
-- XSS Attempts
-- Command Injection
-- Privilege Escalation
-
----
-
-## 🔌 API Endpoints
-
-### Health & Status
-```bash
-GET /health
-GET /
+```mermaid
+flowchart TD
+    A[React + TypeScript Frontend<br/>Vite, Vercel] -->|REST + SSE| B[FastAPI Backend<br/>Render]
+    B --> C1[Regex Engine<br/>22 patterns]
+    B --> C2[Statistical Engine<br/>entropy / z-score / IP + brute-force]
+    B --> C3[ML Anomaly Scorer<br/>Isolation-Forest-inspired]
+    C1 --> D[Risk Engine<br/>weighted score, 4 levels]
+    C2 --> D
+    C3 --> D
+    D --> E{AI Insight Gateway}
+    E -->|primary| F1[Gemini]
+    E -->|fallback| F2[Claude Sonnet]
+    E -->|fallback| F3[Rule-based insights]
+    D --> G[Policy Engine<br/>mask / block / allow]
+    G --> H[/analyze response/]
+    B --> I[Request Logger Middleware]
+    I --> J[(In-memory log buffer, 100 entries)]
+    J --> K[/api/logs/history]
+    J --> L[/api/logs/stream — SSE]
 ```
-
-### Analysis
-```bash
-POST /analyze
-Content-Type: application/json
-
-{
-  "input_type": "text|file|sql|log|chat",
-  "content": "your content here",
-  "options": {
-    "mask": true,
-    "log_analysis": true,
-    "block_high_risk": true,
-    "use_ai": true
-  }
-}
-```
-
-**Response:**
-```json
-{
-  "summary": "Analysis complete",
-  "risk_score": 7.5,
-  "risk_level": "HIGH",
-  "findings": [
-    {
-      "type": "api_key",
-      "risk": "critical",
-      "line": 42,
-      "detection_method": "regex",
-      "masked_value": "sk-...",
-      "original_line": "api_key=sk-1234567890abcdef..."
-    }
-  ],
-  "insights": ["Exposed API key detected. Rotate immediately."],
-  "detection_breakdown": {
-    "regex": 3,
-    "statistical": 1,
-    "ml": 0,
-    "ai": 1
-  }
-}
-```
-
-### Logs
-```bash
-# Get log history (last 100 logs)
-GET /api/logs/history
-
-# Stream live logs (Server-Sent Events)
-GET /api/logs/stream
-```
-
----
-
-## 🧪 Testing
-
-### Run Backend Tests
-```bash
-cd backend
-pytest tests/ -v --tb=short
-```
-
-### Test Coverage
-- Log analyzer
-- Regex detection engine
-- Risk engine
-- API routes
 
 ---
 
 ## 📦 Tech Stack
 
 | Layer | Technology |
-|-------|------------|
-| **Frontend** | React 18 + Vite + TypeScript |
-| **Backend** | FastAPI (Python 3.10+) |
-| **Database** | In-memory (production: PostgreSQL ready) |
-| **AI** | Anthropic Claude 3.5 Sonnet |
-| **Deployment** | Docker + Render |
+|---|---|
+| **Frontend** | React 18 + TypeScript + Vite (custom CSS, no UI framework) |
+| **Backend** | FastAPI 0.115 on Python 3.11 |
+| **AI providers** | Google Gemini (`google-generativeai`, primary) · Anthropic Claude (`anthropic` SDK, fallback) |
+| **Validation** | Pydantic v2 / `pydantic-settings` |
+| **Realtime transport** | Server-Sent Events (`StreamingResponse`) |
+| **Storage** | In-memory only — no database is used |
 | **Testing** | pytest |
+| **Backend deployment** | Docker (`python:3.11-slim`) → Render (`render.yaml`) |
+| **Frontend deployment** | Vercel (`vercel.json`); a Docker/Nginx image is also provided for self-hosting |
+| **Local orchestration** | Docker Compose |
+
+---
+
+## 🔌 API Reference
+
+Base URL: `https://secureai-backend-3yg7.onrender.com` (or `http://localhost:8000` locally)
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/` | Service metadata and a list of available endpoints |
+| `POST` | `/analyze` | Main scan endpoint — accepts JSON or `multipart/form-data` file upload |
+| `GET` | `/health` | Liveness check (`status`, `version`, `model`, `environment`, `timestamp`) |
+| `GET` | `/patterns` | Returns all 22 regex pattern names with their risk level and category |
+| `GET` | `/api/logs/history` | Last 100 buffered backend log events |
+| `GET` | `/api/logs/stream` | Server-Sent Events stream of live backend log events |
+| `GET` | `/docs` | Interactive Swagger UI |
+
+### `POST /analyze`
+
+```bash
+curl -X POST https://secureai-backend-3yg7.onrender.com/analyze \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "input_type": "log",
+    "content": "[ERROR] Database password=secret123 exposed\n[WARN] Login failed from 203.0.113.10",
+    "options": {
+      "mask": true,
+      "block_high_risk": true,
+      "log_analysis": true,
+      "use_ai": true
+    }
+  }'
+```
+
+`input_type` must be one of `text | file | sql | chat | log`. Content is capped at **500,000 characters** per request (extra content is truncated, not rejected).
+
+Response shape:
+
+```json
+{
+  "summary": "Log input contains sensitive credentials",
+  "content_type": "log",
+  "total_lines_analyzed": 2,
+  "findings": [
+    {
+      "type": "password",
+      "risk": "critical",
+      "category": "credential",
+      "detection_method": "regex",
+      "value": "password=[REDACTED]"
+    }
+  ],
+  "risk_score": 4,
+  "risk_level": "medium",
+  "action": "masked",
+  "insights": ["CRITICAL: Password exposed in plain text - change immediately and audit all access logs"],
+  "detection_breakdown": { "regex": 1, "statistical": 0, "ml": 0, "ai": 0 },
+  "truncated": false,
+  "generated_at": "2026-08-31T12:00:00+00:00"
+}
+```
+
+### Detection Patterns
+
+The regex engine (`/patterns`) currently ships **22** named detectors:
+
+`email` · `password` · `api_key` · `secret` · `hardcoded_secret` · `bearer_token` · `token` · `xss_attempt` · `path_traversal` · `privilege_escalation` · `phone` · `ssn` · `stack_trace` · `sql_injection` · `command_injection` · `ip_address` · `debug_mode` · `jwt_token` · `aws_key` · `credit_card` · `private_key_block` · `connection_string`
+
+Plus statistical/log-specific detectors not tied to a fixed regex: `high_entropy_string`, `credential_density_anomaly`, `multi_pattern_line`, `failure_rate_spike`, `brute_force`, `malicious_ip` / `attacker_ip`.
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.11
+- Node.js 18+
+- Docker & Docker Compose (optional)
+
+### 1. Clone
+
+```bash
+git clone https://github.com/Kondareddy1209/AI_Secure_Data_Intelligence_Platform.git
+cd AI_Secure_Data_Intelligence_Platform
+```
+
+### 2. Backend
+
+```bash
+cd backend
+cp .env.example .env
+# Fill in ANTHROPIC_API_KEY and/or GEMINI_API_KEY (see Environment Variables below)
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+Backend runs at `http://localhost:8000` · Swagger UI at `http://localhost:8000/docs`.
+
+### 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs at `http://localhost:5173` and expects the backend at `VITE_API_URL` (defaults to `http://localhost:8000`).
+
+### 4. Or, with Docker Compose
+
+```bash
+docker-compose up --build
+```
+
+- Backend → `http://localhost:8000`
+- Frontend (built + served via Nginx) → `http://localhost:3000`
 
 ---
 
 ## 🔐 Environment Variables
 
-### Backend (.env)
-```
-ANTHROPIC_API_KEY=your_key_here
-API_BEARER_TOKEN=your_token_here (optional)
-REQUIRE_API_BEARER_TOKEN=false
-APP_VERSION=1.0.0
-ENVIRONMENT=production
-CLAUDE_MODEL=claude-3-5-sonnet-20241022
-```
+| Variable | Used by | Default / Notes |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | AI gateway (Claude fallback) | none — falls back to rule-based insights if unset |
+| `GEMINI_API_KEY` | AI gateway (Gemini, default provider) | none — required for the primary AI path; not present in `.env.example` |
+| `AI_PROVIDER` | AI gateway | `gemini` if unset |
+| `CLAUDE_MODEL` | Settings only | `claude-sonnet-4-6` (analyze route hardcodes this model regardless) |
+| `REQUIRE_API_BEARER_TOKEN` | `/analyze` auth | `false` — auth is **disabled by default** |
+| `API_BEARER_TOKEN` | `/analyze` auth | only enforced when the flag above is `true` |
+| `FRONTEND_URL` | CORS allowlist | appended to the built-in localhost origins |
+| `ENVIRONMENT` | `/health` response | `development` |
+| `APP_VERSION` | `/`, `/health` | `1.0.0` |
+| `VITE_API_URL` | Frontend | `http://localhost:8000` |
 
 ---
 
-## 📊 Performance
+## 🧪 Testing
 
-- **Analysis Time:** ~50-200ms (text), ~500ms-2s (with AI)
-- **Concurrent Users:** 1000+
-- **Memory:** ~150MB baseline
-- **Log Buffer:** Last 100 entries in-memory
-- **AI Timeout:** 25 seconds per request
-
----
-
-## 🐛 Error Handling
-
-### Graceful Degradation
-- If Anthropic API is down → Falls back to rule-based analysis
-- If credits exhausted → Returns HTTP 503 with friendly message
-- If token invalid → Returns HTTP 401 with hint
-
-### System Logging
-All events logged to `/api/logs/stream` and `/api/logs/history`:
-- Request/response times
-- Error events
-- AI API calls
-- Authentication events
-
----
-
-## 📝 Example Usage
-
-### Analyze a Log File
 ```bash
-curl -X POST https://secureai-backend-3yg7.onrender.com/api/analyze \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "input_type": "log",
-    "content": "[INFO] User login failed from 192.168.1.1\n[ERROR] Database password=secret123 exposed",
-    "options": {"mask": true, "use_ai": true}
-  }'
+cd backend
+pytest tests/ -v
 ```
 
-### Get Recent Logs
-```bash
-curl https://secureai-backend-3yg7.onrender.com/api/logs/history | jq .
-```
-
----
-
-## 🚀 Deployment
-
-### Deploy to Render (Production)
-```bash
-git add .
-git commit -m "fix: your fixes here"
-git push origin main
-# Render auto-deploys on push
-```
-
-### Monitor Deployment
-```bash
-# Check backend health
-curl https://secureai-backend-3yg7.onrender.com/health
-
-# Check logs
-curl https://secureai-backend-3yg7.onrender.com/api/logs/history | jq .logs[-5:]
-```
-
----
-
-## 💡 Key Features Highlights
-
-### 1. Multi-Method Detection
-- Regex patterns for known secrets
-- Statistical outlier detection
-- ML-based anomaly detection
-- AI contextual analysis
-
-### 2. Real-Time Logging
-- Server-Sent Events (SSE) for live updates
-- In-memory circular buffer (100 entries)
-- System event tracking
-- Performance metrics
-
-### 3. Risk Assessment
-- CVSS-style scoring (0-10)
-- Risk level classification (LOW/MEDIUM/HIGH/CRITICAL)
-- Action recommendation (ALLOWED/WARN/BLOCK)
-
-### 4. Data Privacy
-- Optional output masking
-- Configurable redaction
-- No persistent storage of sensitive content
+The suite currently covers **7 tests** across 4 files: `test_analyze.py`, `test_log_analyzer.py`, `test_regex_engine.py`, and `test_risk_engine.py`. There is no CI workflow configured in this repository yet — tests are run manually.
 
 ---
 
 ## 📚 Project Structure
 
 ```
-SISA-Hackathon/
+AI_Secure_Data_Intelligence_Platform/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py              # FastAPI app entry
+│   │   ├── main.py                  # FastAPI app entry, CORS, router wiring
 │   │   ├── api/routes/
-│   │   │   ├── analyze.py       # Main analysis endpoint
-│   │   │   ├── logs.py          # Logs endpoints
-│   │   │   └── health.py        # Health check
+│   │   │   ├── analyze.py           # /analyze, /health, /patterns
+│   │   │   └── logs.py              # /api/logs/history, /api/logs/stream (SSE)
 │   │   ├── modules/
-│   │   │   ├── detection/       # Detection engines
-│   │   │   ├── ai/              # Anthropic integration
-│   │   │   ├── policy/          # Policy enforcement
-│   │   │   └── risk/            # Risk scoring
-│   │   └── utils/               # Utilities & logging
-│   ├── tests/                   # Unit tests
+│   │   │   ├── detection/           # regex, statistical, ML, log analyzer
+│   │   │   ├── ai/                  # Gemini + Claude gateways
+│   │   │   ├── risk/                # risk scoring
+│   │   │   └── policy/              # masking + block/allow decisions
+│   │   ├── middleware/              # request logging middleware
+│   │   └── utils/                   # structured logger, log buffer, masking helpers
+│   ├── tests/                       # pytest suite
 │   ├── requirements.txt
+│   ├── render.yaml
 │   └── Dockerfile
 ├── frontend/
 │   ├── src/
-│   │   ├── App.tsx              # Main component
-│   │   ├── components/          # React components
-│   │   ├── hooks/               # Custom hooks
-│   │   ├── services/            # API service
-│   │   └── types/               # TypeScript types
-│   ├── package.json
+│   │   ├── App.tsx                  # main dashboard shell
+│   │   ├── components/              # input panels, results panel, log viewer
+│   │   ├── hooks/useAnalyze.ts
+│   │   ├── services/api.ts          # fetch client + SSE subscriber
+│   │   └── types/
+│   ├── vercel.json
 │   └── Dockerfile
 ├── docker-compose.yml
 └── README.md
@@ -359,68 +318,29 @@ SISA-Hackathon/
 
 ---
 
-## 🤝 Contributing
+## 👤 What I Built
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit changes: `git commit -m 'Add amazing feature'`
-4. Push to branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+This is a full-stack, end-to-end project — not a template. It includes:
+
+- A four-layer detection pipeline (regex → statistical → ML-style scoring → AI) designed to degrade gracefully when any single layer (especially the AI layer) is unavailable.
+- A dual-provider AI gateway with automatic failover (Gemini → Claude → rule-based) and structured handling for timeouts, rate limits, auth errors, and exhausted API credits.
+- A custom weighted risk engine and policy layer that turns raw findings into an `allowed / masked / blocked` decision.
+- A real-time observability layer (SSE log streaming + in-memory ring buffer) built without a database or message broker.
+- A React/TypeScript dashboard consuming all of the above, including a live log viewer and client-side JSON/CSV export.
+
+*(Personalize this section with your specific role, e.g. "solo-built" vs. "led backend/detection pipeline" if this was a team project.)*
 
 ---
 
-## 📞 Support & Troubleshooting
+## 🤝 Contributing
 
-### Backend won't start?
-```bash
-# Clear cache and reinstall
-rm -rf backend/__pycache__ backend/**/__pycache__
-pip install -r backend/requirements.txt --force-reinstall
-```
-
-### Frontend not connecting to backend?
-- Check CORS settings in `backend/app/main.py`
-- Frontend must use correct backend URL
-- Check that backend is running on port 8000
-
-### AI credits exhausted?
-- Visit https://console.anthropic.com
-- Go to Billing → Add Credits
-- Update `ANTHROPIC_API_KEY` if switched accounts
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Commit your changes
+4. Open a Pull Request
 
 ---
 
 ## 📄 License
 
-This project is part of the SISA Hackathon 2026.
-
----
-
-## 🎯 Roadmap
-
-- [ ] PostgreSQL integration for persistent logs
-- [ ] User authentication & RBAC
-- [ ] Advanced visualization dashboards
-- [ ] Export reports (PDF, Excel)
-- [ ] Email alerts for critical findings
-- [ ] Mobile app
-- [ ] Multi-language support
-
----
-
-## 📊 Status
-
-| Component | Status | Link |
-|-----------|--------|------|
-| Backend | ✅ Live | https://secureai-backend-3yg7.onrender.com |
-| Frontend | ✅ Building | Local: http://localhost:5173 |
-| Tests | ✅ Passing | CI/CD on push |
-| Documentation | ✅ Complete | This README |
-
----
-
-**Last Updated:** March 26, 2026  
-**Version:** 1.0.0  
-**Repository:** https://github.com/Kondareddy1209/SISA-Hackathon
-
-
+No license file is currently included in this repository. Add a `LICENSE` file to clarify usage terms if you intend this project to be reused by others.
