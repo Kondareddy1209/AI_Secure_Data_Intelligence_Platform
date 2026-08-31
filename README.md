@@ -24,7 +24,14 @@ An intelligent multi-stage security analysis platform designed to detect sensiti
 
 ## 🖥️ Screenshots
 
-> Screenshots coming soon.
+| Security Analysis & Findings | Live System Logs (SSE) |
+|---|---|
+| ![Security Analysis](screenshots/analysis.png) | ![Live Logs](screenshots/logs.png) |
+
+| Dashboard Overview |
+|---|
+| ![Dashboard](screenshots/dashboard.png) |
+
 
 ---
 
