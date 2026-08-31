@@ -1,4 +1,4 @@
-from app.modules.detection.regex_engine import detect_all
+from app.modules.detection.regex_engine import detect_all, get_all_patterns
 
 
 def test_detect_api_key_and_password_and_email_and_token():
@@ -12,8 +12,16 @@ def test_detect_api_key_and_password_and_email_and_token():
     assert any(f["type"] == "email" and f["risk"] == "low" for f in r3)
 
     r4 = detect_all("bearer eyJhbGciOiJIUzI1NiJ9")
-    assert any(f["type"] == "token" and f["risk"] == "high" for f in r4)
-from app.modules.detection.regex_engine import detect_all
+    assert any(f["type"] == "bearer_token" and f["risk"] == "high" for f in r4)
+
+    r5 = detect_all("token=MY_SECRET_TOKEN_VALUE")
+    assert any(f["type"] == "token" and f["risk"] == "high" for f in r5)
 
 
-
+def test_get_all_patterns():
+    patterns = get_all_patterns()
+    assert isinstance(patterns, dict)
+    assert len(patterns) == 22
+    assert "password" in patterns
+    assert "api_key" in patterns
+    assert "email" in patterns

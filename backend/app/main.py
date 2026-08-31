@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,10 +8,18 @@ from app.core.config import get_cors_origin_regex, get_cors_origins, settings
 from app.middleware import RequestLoggerMiddleware
 from app.utils.logger import log_event
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    log_event("INFO", "Backend application started", service="secureai-backend")
+    yield
+
+
 app = FastAPI(
     title="AI Secure Data Intelligence Platform",
     description="AI Gateway + Scanner + Log Analyzer + Risk Engine",
-    version=settings.app_version
+    version=settings.app_version,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -36,7 +45,3 @@ async def root():
         "endpoints": ["/analyze", "/health", "/patterns", "/api/logs/history", "/api/logs/stream", "/docs"]
     }
 
-
-@app.on_event("startup")
-async def startup_event():
-    log_event("INFO", "Backend application started", service="secureai-backend")

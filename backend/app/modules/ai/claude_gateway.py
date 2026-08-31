@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import traceback
 from typing import Dict, List
 
 import anthropic
@@ -9,7 +8,9 @@ import anthropic
 from app.utils.logger import log_event
 from app.modules.ai.gemini_gateway import get_gemini_insights
 
-AI_PROVIDER = os.getenv("AI_PROVIDER", "gemini")
+
+def _get_claude_model() -> str:
+    return os.getenv("CLAUDE_MODEL", "").strip() or "claude-3-5-sonnet-20241022"
 
 
 def _get_client() -> anthropic.Anthropic:
@@ -21,7 +22,7 @@ def _get_client() -> anthropic.Anthropic:
 
 def generate_fallback_insights(findings: List[Dict]) -> List[str]:
     """
-    Rule-based insights when Claude API is unavailable.
+    Rule-based security insights when external AI APIs are unavailable or disabled.
     """
     insights = []
     types = {finding.get("type", "") for finding in findings}
@@ -77,40 +78,24 @@ def generate_fallback_insights(findings: List[Dict]) -> List[str]:
     return insights
 
 
-async def get_ai_insights(
+async def _call_claude(
     findings: List[Dict],
     content_type: str,
     raw_content: str = "",
 ) -> List[str]:
-    """
-    Get AI-powered insights from the configured provider (Gemini by default, Claude as fallback).
-    Falls back to rule-based insights if AI services are unavailable.
-    """
-    # Try primary provider first
-    if AI_PROVIDER == "gemini":
-        log_event("INFO", "Using Gemini as primary AI provider", source="ai_gateway")
-        gemini_result = await get_gemini_insights(findings, content_type, raw_content)
-        if gemini_result:
-            return gemini_result
-        log_event("INFO", "Gemini returned no insights, falling back to Claude", source="ai_gateway")
-    
-    if not findings:
-        log_event("DEBUG", "AI insights skipped because no findings were detected", source="ai_gateway")
-        return ["No sensitive data detected. Content appears secure."]
-
+    """Call Claude API with timeout and robust error handling."""
     api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
     if not api_key:
-        log_event("WARN", "AI insights fallback because ANTHROPIC_API_KEY is not configured", source="ai_gateway")
-        return generate_fallback_insights(findings)
+        return []
 
-    raw_response = ""
+    model_name = _get_claude_model()
     try:
         client = _get_client()
         log_event(
             "INFO",
-            "AI model call started",
+            "Claude AI model call started",
             source="ai_gateway",
-            model="claude-sonnet-4-6",
+            model=model_name,
             findings_count=len(findings),
             content_type=content_type,
         )
@@ -157,49 +142,24 @@ Rules:
 - Return ONLY the JSON, no markdown, no extra text"""
 
         loop = asyncio.get_event_loop()
-        try:
-            message = await asyncio.wait_for(
-                loop.run_in_executor(
-                    None,
-                    lambda: client.messages.create(
-                        model="claude-sonnet-4-6",
-                        max_tokens=600,
-                        messages=[{"role": "user", "content": prompt}],
-                    ),
+        message = await asyncio.wait_for(
+            loop.run_in_executor(
+                None,
+                lambda: client.messages.create(
+                    model=model_name,
+                    max_tokens=600,
+                    messages=[{"role": "user", "content": prompt}],
                 ),
-                timeout=25,
-            )
-        except Exception as e:
-            error_message = str(e).lower()
-            if "credit" in error_message or "insufficient" in error_message:
-                log_event(
-                    "WARN",
-                    "Anthropic credits exhausted, attempting Gemini fallback",
-                    source="ai_gateway",
-                    error_type="INSUFFICIENT_CREDITS",
-                )
-                gemini_result = await get_gemini_insights(findings, content_type, raw_content)
-                if gemini_result:
-                    log_event(
-                        "INFO",
-                        "Successfully switched to Gemini after Claude credit exhaustion",
-                        source="ai_gateway",
-                    )
-                    return gemini_result
-                return {
-                    "error": True,
-                    "type": "INSUFFICIENT_CREDITS",
-                    "message": "AI service temporarily unavailable. Anthropic credits exhausted and Gemini unavailable.",
-                    "fallback": "Using rule-based analysis",
-                }
-            raise
+            ),
+            timeout=25,
+        )
 
         raw_response = message.content[0].text.strip()
         log_event(
             "INFO",
-            "AI model call completed",
+            "Claude AI model call completed",
             source="ai_gateway",
-            model="claude-sonnet-4-6",
+            model=model_name,
             response_preview=raw_response[:120],
         )
 
@@ -208,80 +168,76 @@ Rules:
             clean_response = clean_response.replace(fence, "")
         clean_response = clean_response.strip()
 
-        try:
-            parsed = json.loads(clean_response)
-            insights = parsed.get("insights", [])
+        parsed = json.loads(clean_response)
+        insights = parsed.get("insights", [])
 
-            attack_type = parsed.get("attack_classification", "")
-            if attack_type and attack_type != "unknown":
-                insights.insert(
-                    0,
-                    f"Attack Classification: {attack_type.upper().replace('_', ' ')}",
-                )
+        attack_type = parsed.get("attack_classification", "")
+        if attack_type and attack_type != "unknown":
+            insights.insert(
+                0,
+                f"Attack Classification: {attack_type.upper().replace('_', ' ')}",
+            )
 
-            actions = parsed.get("immediate_actions", [])
-            for action in actions[:2]:
-                insights.append(f"Action Required: {action}")
+        actions = parsed.get("immediate_actions", [])
+        for action in actions[:2]:
+            insights.append(f"Action Required: {action}")
 
-            return [str(insight) for insight in insights[:6]]
-        except Exception:
-            log_event("WARN", "AI response parsing failed, using fallback insights", source="ai_gateway")
-            return generate_fallback_insights(findings)
+        return [str(insight) for insight in insights[:6]]
 
-    except asyncio.TimeoutError:
-        log_event("ERROR", "AI model call timed out after 25s", source="ai_gateway")
-        return {
-            "error": True,
-            "type": "AI_TIMEOUT",
-            "message": "AI analysis timed out",
-            "fallback": "Using rule-based analysis"
-        }
     except anthropic.AuthenticationError as e:
-        log_event(
-            "ERROR", 
-            "AI authentication failed - check ANTHROPIC_API_KEY validity", 
-            source="ai_gateway",
-            error_detail=str(e)
-        )
-        return {
-            "error": True,
-            "type": "AUTH_ERROR",
-            "message": "AI authentication failed",
-            "fallback": "Using rule-based analysis"
-        }
-    except anthropic.RateLimitError:
-        log_event("WARN", "AI rate limit exceeded", source="ai_gateway")
-        return {
-            "error": True,
-            "type": "RATE_LIMIT",
-            "message": "AI rate limit exceeded",
-            "fallback": "Using rule-based analysis"
-        }
-    except anthropic.APIConnectionError as e:
-        log_event(
-            "ERROR", 
-            "Could not connect to AI service", 
-            source="ai_gateway",
-            error_detail=str(e)
-        )
-        return {
-            "error": True,
-            "type": "CONNECTION_ERROR",
-            "message": "Could not connect to AI service",
-            "fallback": "Using rule-based analysis"
-        }
+        log_event("WARN", f"Claude authentication failed: {e}", source="ai_gateway")
+        return []
+    except anthropic.RateLimitError as e:
+        log_event("WARN", f"Claude rate limit exceeded: {e}", source="ai_gateway")
+        return []
+    except (anthropic.APIConnectionError, asyncio.TimeoutError) as e:
+        log_event("WARN", f"Claude connection issue or timeout: {e}", source="ai_gateway")
+        return []
     except Exception as exc:
-        log_event(
-            "ERROR",
-            f"AI model call failed with {type(exc).__name__}",
-            source="ai_gateway",
-            error=str(exc),
-        )
-        return {
-            "error": True,
-            "type": "AI_ERROR",
-            "message": str(exc),
-            "fallback": "Using rule-based analysis"
-        }
+        log_event("WARN", f"Claude model call failed: {exc}", source="ai_gateway")
+        return []
 
+
+async def get_ai_insights(
+    findings: List[Dict],
+    content_type: str,
+    raw_content: str = "",
+) -> List[str]:
+    """
+    Centralized, unidirectional AI Gateway fallback:
+      1. Gemini (primary if configured)
+      2. Claude (fallback if Gemini unavailable)
+      3. Rule-based insights (if all external AI services unavailable)
+    """
+    if not findings:
+        log_event("DEBUG", "AI insights skipped because no findings were detected", source="ai_gateway")
+        return ["No sensitive data detected. Content appears secure."]
+
+    # 1. Try Gemini
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if gemini_key:
+        try:
+            log_event("INFO", "Attempting Gemini AI provider", source="ai_gateway")
+            gemini_result = await get_gemini_insights(findings, content_type, raw_content)
+            if gemini_result:
+                return gemini_result
+            log_event("INFO", "Gemini returned no insights, falling back to Claude", source="ai_gateway")
+        except Exception as e:
+            log_event("WARN", f"Gemini provider error: {e}, falling back to Claude", source="ai_gateway")
+
+    # 2. Try Claude
+    claude_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if claude_key:
+        try:
+            log_event("INFO", "Attempting Claude AI provider", source="ai_gateway")
+            claude_result = await _call_claude(findings, content_type, raw_content)
+            if claude_result:
+                return claude_result
+            log_event("INFO", "Claude returned no insights, falling back to rule-based insights", source="ai_gateway")
+        except Exception as e:
+            log_event("WARN", f"Claude provider error: {e}, falling back to rule-based insights", source="ai_gateway")
+
+    # 3. Deterministic rule-based fallback
+    log_event("INFO", "Using rule-based insights fallback", source="ai_gateway")
     return generate_fallback_insights(findings)
+

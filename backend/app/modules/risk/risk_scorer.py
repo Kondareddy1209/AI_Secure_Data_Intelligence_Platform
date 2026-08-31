@@ -1,5 +1,6 @@
 from typing import List, Dict, Tuple
-from .risk_engine import score_findings, score_to_level, determine_action
+from app.modules.risk.risk_engine import calculate_risk_score, get_risk_level
+from app.modules.policy.policy_engine import determine_action
 
 
 def compute_risk(findings: List[Dict], options: Dict) -> Tuple[int, str, str]:
@@ -7,7 +8,8 @@ def compute_risk(findings: List[Dict], options: Dict) -> Tuple[int, str, str]:
 
     Returns a tuple (score:int, level:str, action:str)
     """
-    score = score_findings(findings)
-    level = score_to_level(score)
+    score = calculate_risk_score(findings)
+    level = get_risk_level(score)
     action = determine_action(level, options)
     return score, level, action
+

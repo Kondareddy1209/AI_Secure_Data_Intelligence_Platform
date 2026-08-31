@@ -5,12 +5,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     anthropic_api_key: str = ""
-    claude_model: str = "claude-sonnet-4-6"
+    claude_model: str = "claude-3-5-sonnet-20241022"
+    gemini_api_key: str = ""
+    ai_provider: str = "gemini"
     frontend_origin: str = "http://localhost:5173"
+    frontend_url: str = ""
     allowed_origins: str = "http://localhost:3000,http://localhost:5173"
     api_bearer_token: str = "sisa-hackathon-secure-2025"
+    require_api_bearer_token: str = "false"
     max_file_size_mb: int = 10
     app_version: str = "1.0.0"
+    environment: str = "development"
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -34,7 +39,7 @@ def get_cors_origins() -> list:
         "http://127.0.0.1:5173",
     ]
     frontend_url = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
-    if frontend_url:
+    if frontend_url and frontend_url not in origins:
         origins.append(frontend_url)
     return origins
 
@@ -45,10 +50,3 @@ def get_cors_origin_regex() -> str:
     """
     return r"https://.*\.vercel\.app"
 
-
-if not settings.anthropic_api_key:
-    print("WARNING: ANTHROPIC_API_KEY not set - AI insights will use fallback")
-else:
-    print(f"API Key loaded: {settings.anthropic_api_key[:12]}...")
-    print(f"Model: {settings.claude_model}")
-    print(f"CORS: {get_cors_origins()}")

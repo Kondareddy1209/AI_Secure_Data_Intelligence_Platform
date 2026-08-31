@@ -207,42 +207,18 @@ async def analyze(
             content_type=input_type,
             raw_content=content[:2000],
         )
-        
-        # Check if AI returned an error
-        if isinstance(ai_insights, dict) and ai_insights.get("error") is True:
-            error_type = ai_insights.get("type", "UNKNOWN")
-            
-            if error_type == "INSUFFICIENT_CREDITS":
-                raise HTTPException(
-                    status_code=503,
-                    detail={
-                        "error": "AI_SERVICE_UNAVAILABLE",
-                        "message": "AI service temporarily unavailable. API credits exhausted.",
-                        "action": "Please contact administrator to top up API credits.",
-                        "service": "Anthropic Claude"
-                    }
-                )
-            elif error_type in ["AUTH_ERROR", "CONNECTION_ERROR", "RATE_LIMIT"]:
-                # These are transient AI service issues - fall back gracefully
-                log_event(
-                    "WARN", 
-                    f"AI service unavailable ({error_type}), using rule-based analysis", 
-                    route="/analyze",
-                    error_type=error_type
-                )
-                ai_insights = []
-            else:
-                # Other AI errors - also fall back
-                log_event("WARN", f"AI error encountered: {error_type}", route="/analyze", error_type=error_type)
-                ai_insights = []
-        else:
-            is_fallback = not ai_insights or (isinstance(ai_insights, list) and len(ai_insights) > 0 and any(
+        is_fallback = not ai_insights or (
+            isinstance(ai_insights, list)
+            and len(ai_insights) > 0
+            and any(
                 phrase in ai_insights[0].lower()
-                for phrase in ["unavailable", "appears secure", "review all"]
-            ))
-            ai_findings_count = len(ai_insights) if not is_fallback else 0
+                for phrase in ["unavailable", "appears secure", "review all", "rule-based"]
+            )
+        )
+        ai_findings_count = len(ai_insights) if not is_fallback else 0
     elif not all_findings:
         ai_insights = ["No sensitive data detected. Content appears secure."]
+
 
     action = determine_action(risk_level, options)
     masked_findings = apply_masking(all_findings, options.get("mask", True))
@@ -270,14 +246,14 @@ async def analyze(
 
 @router.get("/health")
 async def health():
-    import time
     return {
         "status": "ok",
         "version": os.getenv("APP_VERSION", "1.0.0"),
-        "model": "claude-sonnet-4-6",
+        "model": os.getenv("CLAUDE_MODEL", "claude-3-5-sonnet-20241022"),
         "environment": os.getenv("ENVIRONMENT", "development"),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
 
 
 @router.get("/patterns")
