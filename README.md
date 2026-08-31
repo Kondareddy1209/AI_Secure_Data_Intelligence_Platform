@@ -28,9 +28,14 @@ An intelligent multi-stage security analysis platform designed to detect sensiti
 |---|---|
 | ![Security Analysis](screenshots/analysis.png) | ![Live Logs](screenshots/logs.png) |
 
-| Dashboard Overview |
+| SQL Injection Detection | Log Analysis & Highlighting |
+|---|---|
+| ![SQL Analysis](screenshots/sql_analysis.png) | ![Log Analysis](screenshots/log_analysis.png) |
+
+| Main Dashboard Overview |
 |---|
 | ![Dashboard](screenshots/dashboard.png) |
+
 
 
 ---
